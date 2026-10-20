@@ -28,6 +28,7 @@ export const DEFAULT_CATEGORIES: Category[] = [
   { id: 'exp-entretenimento', name: 'Entretenimento', type: 'expense', icon: 'Tv', description: 'Cinema, streaming, saídas com amigos' },
   { id: 'exp-viagens', name: 'Viagens', type: 'expense', icon: 'Compass', description: 'Passagens, hotéis, deslocações de lazer' },
   { id: 'exp-dividas', name: 'Dívidas', type: 'expense', icon: 'Receipt', description: 'Pagamento de empréstimos, créditos' },
+  { id: 'exp-metas', name: 'Metas & Poupança', type: 'expense', icon: 'Target', description: 'Valores alocados a metas e objetivos de poupança' },
   { id: 'exp-outros', name: 'Outros (Despesa)', type: 'expense', icon: 'HelpCircle', description: 'Outras despesas imprevistas' }
 ];
 

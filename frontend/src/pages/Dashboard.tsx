@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useFinance } from '../contexts/FinanceContext';
+import { TransactionModal } from '../components/TransactionModal';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -75,6 +76,8 @@ export const Dashboard: React.FC = () => {
     setActivePage,
     clearNotif
   } = useFinance();
+
+  const [isTxModalOpen, setIsTxModalOpen] = useState(false);
 
   // Get active notifications (unread or recent warning/danger)
   const activeAlerts = notifications.filter(n => !n.read && ['warning', 'danger'].includes(n.type)).slice(0, 3);
@@ -147,10 +150,17 @@ export const Dashboard: React.FC = () => {
             }
           </p>
         </div>
-        <div className="flex gap-2 relative z-10">
+        <div className="flex flex-wrap gap-2 relative z-10">
+          <button
+            onClick={() => setIsTxModalOpen(true)}
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
+          >
+            <Plus size={14} strokeWidth={2.5} />
+            Adicionar / Tirar Dinheiro
+          </button>
           <button
             onClick={() => setActivePage('transactions')}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-[#0B2545] font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 shadow-md active:scale-95"
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-[#0B2545] font-bold text-xs rounded-lg transition-all flex items-center gap-1.5 shadow-md active:scale-95 cursor-pointer"
           >
             <Plus size={14} strokeWidth={2.5} />
             Movimentos & Lançamentos
@@ -451,6 +461,12 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
       
+      {/* Pop-up unificado para Adicionar e Tirar Dinheiro */}
+      <TransactionModal
+        isOpen={isTxModalOpen}
+        onClose={() => setIsTxModalOpen(false)}
+        initialType="income"
+      />
     </div>
   );
 };

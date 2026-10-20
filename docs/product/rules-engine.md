@@ -4,15 +4,17 @@ Este documento define as regras lógicas e restrições matemáticas que governa
 
 ---
 
-### Regra P0: Fórmula de Saldo Disponível & Dedução de Metas
+### Regra P0: Fórmula de Saldo Disponível & Dedução de Metas no Histórico
 > **Prioridade Máxima (Integridade de Caixa)**
 
-O capital guardado em metas de poupança não pode estar livre para gastos correntes.
-$$\text{Saldo Disponível} = \text{Saldo Inicial} + \text{Total Receitas} - \text{Total Despesas} - \text{Total Destinado a Metas}$$
+O capital guardado em metas de poupança não pode estar livre para gastos correntes. Toda alocação a metas gera um lançamento de poupança (`expense` com categoria `exp-metas`) no histórico (`transactions`).
+$$\text{Saldo Disponível} = \text{Saldo Inicial} + \text{Total Receitas} - \text{Total Despesas}$$
 
 - **Onde:**
-  - $\text{Total Destinado a Metas} = \sum_{g \in \text{Goals}} g.\text{currentAmount}$
-  - As receitas do tipo "Saldo Inicial Registado" não são somadas em duplicidade se `saldoInicial` já estiver configurado no perfil.
+  - $\text{Total Despesas}$ inclui tanto os consumos correntes quanto os montantes direcionados para metas de poupança.
+  - As alocações em metas (depósitos ou alocação inicial) são gravadas no histórico (`transactions`), garantindo rastreabilidade contábil no Extrato.
+  - A eliminação de uma meta com saldo acumulado estorna automaticamente o capital para a liquidez através de um lançamento de receita de resgate (`income`).
+  - O saldo inicial padrão inicia estritamente em 0 MZN (sem pressupostos de valores fictícios).
 
 ---
 

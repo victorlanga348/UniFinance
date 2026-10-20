@@ -83,43 +83,80 @@ Responda de forma profissional e encorajadora em português de Moçambique, de f
 // --- ENHANCED STATIC ASSETS & VITE DEVELOPMENT CONFIGURATION ---
 const isProduction = process.env.NODE_ENV === 'production';
 
-if (!isProduction) {
-  // Mount Vite development middlewares when in development
-  import('vite').then((vite) => {
-    vite.createServer({
+async function startServer() {
+  if (!isProduction) {
+    const { createServer } = await import('vite');
+    const viteDevServer = await createServer({
       root: path.resolve(__dirname, '../frontend'),
       server: { middlewareMode: true },
       appType: 'custom'
-    }).then((viteDevServer) => {
-      app.use(viteDevServer.middlewares);
-      
-      // Fallback route for SPA router
-      app.use('*', async (req, res, next) => {
-        const url = req.originalUrl;
-        try {
-          // Read index.html template and inject Vite
-          const fs = await import('fs');
-          let template = fs.readFileSync(path.resolve(__dirname, '../frontend/index.html'), 'utf-8');
-          template = await viteDevServer.transformIndexHtml(url, template);
-          res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
-        } catch (e) {
-          viteDevServer.ssrFixStacktrace(e as Error);
-          next(e);
-        }
-      });
     });
+    
+    app.use(viteDevServer.middlewares);
+    
+    // Fallback route for SPA router
+    app.use('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      try {
+        const fs = await import('fs');
+        let template = fs.readFileSync(path.resolve(__dirname, '../frontend/index.html'), 'utf-8');
+        template = await viteDevServer.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        viteDevServer.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
+  } else {
+    // Serve static assets out of the built /frontend/dist folder in production
+    app.use(express.static(path.join(__dirname, '../frontend/dist')));
+    
+    // Direct all unknown routes to index.html for Single Page App routing
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
+    });
+  }
+
+  // Start Server listening
+  const server = app.listen(port, () => {
+    console.log(`UniFinance backend server running at http://localhost:${port}`);
   });
-} else {
-  // Serve static assets out of the built /frontend/dist folder in production
-  app.use(express.static(path.join(__dirname, '../frontend/dist')));
-  
-  // Direct all unknown routes to index.html for Single Page App routing
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
+
+  server.on('error', (err: any) => {
+    if (err?.code === 'EADDRINUSE') {
+      console.error(`Port ${port} is in use.`);
+    } else {
+      console.error('Server network error:', err);
+    }
   });
+
+  return server;
 }
 
-// Start Server listening
-app.listen(port, () => {
-  console.log(`UniFinance backend server running at http://localhost:${port}`);
+process.on('uncaughtException', (err: any) => {
+  if (err?.code === 'ECONNRESET' || err?.code === 'EPIPE') {
+    return;
+  }
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
+process.on('exit', (code) => {
+  console.log(`Node process exit called with code ${code}. Trace:`, new Error().stack);
+});
+
+process.on('SIGINT', () => {
+  console.log('Received SIGINT');
+});
+
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM');
+});
+
+startServer().catch((err) => {
+  console.error('Failed to start UniFinance server:', err);
+  process.exit(1);
 });

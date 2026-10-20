@@ -8,12 +8,12 @@ Revisão pós-auditoria crítica da plataforma UniFinance.
 
 ## 2. Especificação de Regras de Negócio & Lógica Financeira
 
-### 2.1 Dedução de Metas no Saldo Principal
-- **Comportamento Atual**: Metas acumulam `currentAmount` de forma isolada sem abater o valor do montante principal em conta (`saldoAtual = saldoInicial + receitas - despesas`).
-- **Novo Contrato**:
-  - `saldoDisponivel = saldoInicial + totalReceitas - totalDespesas - totalDestinadoMetas`
-  - Toda operação de poupança/depósito em meta (`depositToGoal` ou `addGoal` com saldo inicial) reserva o capital e deduz imediatamente do saldo disponível para consumo.
-  - Implementar suporte a resgate/estorno de meta caso o utilizador necessite transferir de volta da meta para o saldo disponível.
+### 2.1 Dedução e Registro de Metas no Histórico de Transações
+- **Comportamento Concluído (TASK-2-001)**:
+  - `saldoDisponivel = saldoInicial + totalReceitas - totalDespesas`
+  - Toda operação de poupança/depósito em meta (`depositToGoal` ou `addGoal` com saldo inicial) cria um lançamento formal no histórico de transações (`categoryId: 'exp-metas'`), abatendo o montante da liquidez imediatamente.
+  - Eliminação de meta com fundos acumulados estorna automaticamente o capital para o saldo livre através de uma receita de resgate (`income`).
+  - Inputs monetários iniciam em `0` MZN, permitindo aportes e reajustes flexíveis.
 
 ### 2.2 Bloqueio de Depósitos Superiores ao Saldo
 - **Comportamento Atual**: É possível depositar qualquer quantia na meta, mesmo com saldo zerado ou insuficiente.

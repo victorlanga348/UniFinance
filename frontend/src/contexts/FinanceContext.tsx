@@ -216,7 +216,7 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   // --- METRIC CALCULATIONS ---
-  const saldoInicial = user?.saldoInicial ?? 10000;
+  const saldoInicial = user?.saldoInicial ?? 0;
   
   const totalReceitas = transactions
     .filter(t => t.type === 'income' && t.description !== 'Saldo Inicial Registado')
@@ -291,12 +291,20 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (!user) return;
     try {
+      if (updates.saldoInicial !== undefined) {
+        const potentialSaldo = updates.saldoInicial + totalReceitas - totalDespesas;
+        if (potentialSaldo < 0) {
+          addToast(`O saldo inicial não pode ser reduzido para um valor que deixe o saldo negativo (${potentialSaldo.toLocaleString('pt-MZ')} ${currency}).`, 'error');
+          throw new Error('Saldo inicial inválido: deixaria o saldo negativo.');
+        }
+      }
       const updated = await UniFinanceDB.updateProfile(user.id, updates);
       setUser(updated);
       setCurrencyState(updated.defaultCurrency);
       addToast('Perfil atualizado com sucesso!', 'success');
     } catch (error: any) {
       addToast(error.message || 'Erro ao atualizar perfil.', 'error');
+      throw error;
     }
   };
 
@@ -357,6 +365,11 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const addTransaction = async (txData: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
     try {
+      if (txData.type === 'expense' && txData.amount > saldoAtual) {
+        addToast(`Saldo insuficiente (${saldoAtual.toLocaleString('pt-MZ')} ${currency}). Não é possível registar esta despesa.`, 'error');
+        throw new Error('Saldo insuficiente para realizar esta despesa.');
+      }
+
       await UniFinanceDB.addTransaction(user.id, txData);
       
       // Reload Transactions and Notifications
@@ -377,6 +390,15 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const updateTransaction = async (txId: string, txData: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
     try {
+      const oldTx = transactions.find(t => t.id === txId);
+      const oldImpact = oldTx ? (oldTx.type === 'income' ? oldTx.amount : -oldTx.amount) : 0;
+      const newImpact = txData.type === 'income' ? txData.amount : -txData.amount;
+      const resultingBalance = saldoAtual - oldImpact + newImpact;
+      if (resultingBalance < 0) {
+        addToast(`Esta atualização deixaria o saldo negativo (${resultingBalance.toLocaleString('pt-MZ')} ${currency}). Operação cancelada.`, 'error');
+        throw new Error('Saldo insuficiente para esta atualização.');
+      }
+
       await UniFinanceDB.updateTransaction(user.id, txId, txData);
       
       const [txs, notifs] = await Promise.all([
@@ -396,6 +418,12 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const deleteTransaction = async (txId: string) => {
     if (!user) return;
     try {
+      const txToDelete = transactions.find(t => t.id === txId);
+      if (txToDelete && txToDelete.type === 'income' && saldoAtual - txToDelete.amount < 0) {
+        addToast(`Eliminar esta receita deixaria o saldo negativo (${(saldoAtual - txToDelete.amount).toLocaleString('pt-MZ')} ${currency}).`, 'error');
+        throw new Error('Operação cancelada: deixaria o saldo negativo.');
+      }
+
       await UniFinanceDB.deleteTransaction(user.id, txId);
       
       const [txs, notifs] = await Promise.all([
@@ -459,16 +487,38 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const addGoal = async (goalData: Omit<Goal, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => {
     if (!user) return;
     try {
+      if (goalData.currentAmount > saldoAtual) {
+        addToast(`O valor inicial alocado à meta (${goalData.currentAmount.toLocaleString('pt-MZ')} ${currency}) não pode exceder o saldo disponível (${saldoAtual.toLocaleString('pt-MZ')} ${currency}).`, 'error');
+        throw new Error('Saldo insuficiente para valor inicial da meta.');
+      }
+
       await UniFinanceDB.addGoal(user.id, goalData);
       
-      const [gls, notifs] = await Promise.all([
+      // Se houver valor inicial alocado, registar no histórico de transações como saída de poupança
+      if (goalData.currentAmount > 0) {
+        await UniFinanceDB.addTransaction(user.id, {
+          type: 'expense',
+          amount: goalData.currentAmount,
+          categoryId: 'exp-metas',
+          description: `Alocação Inicial: Meta "${goalData.name}"`,
+          paymentMethod: 'Saldo em Conta',
+          date: new Date().toISOString().split('T')[0],
+          notes: `Poupança alocada na criação da meta "${goalData.name}"`
+        });
+      }
+
+      const [gls, txs, notifs] = await Promise.all([
         UniFinanceDB.getGoals(user.id),
+        UniFinanceDB.getTransactions(user.id),
         UniFinanceDB.getNotifications(user.id)
       ]);
       setGoals(gls);
+      setTransactions(txs);
       setNotifications(notifs);
       
-      addToast('Meta financeira criada com sucesso!', 'success');
+      addToast(goalData.currentAmount > 0 
+        ? 'Meta financeira criada e registada no extrato com sucesso!' 
+        : 'Meta financeira criada com sucesso!', 'success');
     } catch (error: any) {
       addToast(error.message || 'Erro ao criar meta.', 'error');
       throw error;
@@ -497,12 +547,41 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
   const deleteGoal = async (goalId: string) => {
     if (!user) return;
     try {
+      const targetGoal = goals.find(g => g.id === goalId);
+      if (!targetGoal) return;
+
+      // Se a meta tiver saldo poupado, resgatar automaticamente para o saldo disponível registando receita
+      if (targetGoal.currentAmount > 0) {
+        await UniFinanceDB.addTransaction(user.id, {
+          type: 'income',
+          amount: targetGoal.currentAmount,
+          categoryId: 'inc-outros',
+          description: `Resgate da Meta "${targetGoal.name}"`,
+          paymentMethod: 'Saldo em Conta',
+          date: new Date().toISOString().split('T')[0],
+          notes: `Reembolso de fundos após eliminação da meta "${targetGoal.name}"`
+        });
+      }
+
       await UniFinanceDB.deleteGoal(user.id, goalId);
-      const gls = await UniFinanceDB.getGoals(user.id);
+
+      const [gls, txs, notifs] = await Promise.all([
+        UniFinanceDB.getGoals(user.id),
+        UniFinanceDB.getTransactions(user.id),
+        UniFinanceDB.getNotifications(user.id)
+      ]);
       setGoals(gls);
-      addToast('Meta financeira eliminada.', 'info');
+      setTransactions(txs);
+      setNotifications(notifs);
+
+      if (targetGoal.currentAmount > 0) {
+        addToast(`Meta eliminada. O valor poupado (${targetGoal.currentAmount.toLocaleString('pt-MZ')} ${currency}) foi estornado para o saldo disponível!`, 'info');
+      } else {
+        addToast('Meta financeira eliminada.', 'info');
+      }
     } catch (error: any) {
-      addToast('Erro ao eliminar meta.', 'error');
+      addToast(error.message || 'Erro ao eliminar meta.', 'error');
+      throw error;
     }
   };
 
@@ -511,15 +590,44 @@ export const FinanceProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const targetGoal = goals.find(g => g.id === goalId);
       if (!targetGoal) return;
+
+      if (amount <= 0) {
+        addToast('O valor do depósito deve ser superior a zero.', 'warning');
+        return;
+      }
+
+      if (amount > saldoAtual) {
+        addToast(`Saldo insuficiente (${saldoAtual.toLocaleString('pt-MZ')} ${currency}). Não é possível alocar este valor à meta.`, 'error');
+        throw new Error('Saldo insuficiente para depositar na meta.');
+      }
       
       const newAmount = targetGoal.currentAmount + amount;
       await UniFinanceDB.updateGoal(user.id, goalId, { currentAmount: newAmount });
+
+      // Registar a poupança como movimentação no histórico
+      await UniFinanceDB.addTransaction(user.id, {
+        type: 'expense',
+        amount,
+        categoryId: 'exp-metas',
+        description: `Poupança: Meta "${targetGoal.name}"`,
+        paymentMethod: 'Saldo em Conta',
+        date: new Date().toISOString().split('T')[0],
+        notes: `Depósito/reforço de poupança na meta "${targetGoal.name}"`
+      });
       
-      const gls = await UniFinanceDB.getGoals(user.id);
+      const [gls, txs, notifs] = await Promise.all([
+        UniFinanceDB.getGoals(user.id),
+        UniFinanceDB.getTransactions(user.id),
+        UniFinanceDB.getNotifications(user.id)
+      ]);
       setGoals(gls);
-      addToast(`Depositado ${amount.toLocaleString('pt-MZ')} MZN na meta "${targetGoal.name}".`, 'success');
+      setTransactions(txs);
+      setNotifications(notifs);
+
+      addToast(`Depositado ${amount.toLocaleString('pt-MZ')} ${currency} na meta "${targetGoal.name}". Registado no histórico!`, 'success');
     } catch (error: any) {
-      addToast('Erro ao depositar na meta.', 'error');
+      addToast(error.message || 'Erro ao depositar na meta.', 'error');
+      throw error;
     }
   };
 

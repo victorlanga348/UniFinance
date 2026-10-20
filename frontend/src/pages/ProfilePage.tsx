@@ -13,7 +13,7 @@ export const ProfilePage: React.FC = () => {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [role, setRole] = useState(user?.role || 'Estudante Universitário');
-  const [saldoInicial, setSaldoInicial] = useState<number>(user?.saldoInicial || 5000);
+  const [saldoInicial, setSaldoInicial] = useState<number>(user?.saldoInicial ?? 0);
 
   const [isResetConfirming, setIsResetConfirming] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -114,7 +114,7 @@ export const ProfilePage: React.FC = () => {
                 type="number"
                 required
                 min="0"
-                value={saldoInicial || 0}
+                value={saldoInicial}
                 onChange={(e) => setSaldoInicial(Math.max(0, parseFloat(e.target.value) || 0))}
                 className="block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-mono font-bold tabular-nums"
               />

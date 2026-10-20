@@ -35,3 +35,5 @@ Bem-vindo ao índice mestre do grafo de conhecimento técnico e memória retrosp
 - Mapa Geral de Especificações: [[../README|docs/README.md]]
 - Matriz de Governança e Impacto: [[../documentation-governance|docs/documentation-governance.md]]
 - Regras Operacionais de IA: [[../../AGENTS|AGENTS.md]]
+- Tarefa Concluída TASK-2-001: [[../tasks/task-002-sprint-core-finance-rules|Regras Críticas de Caixa e Metas no Histórico]]
+- Tarefa Planeada TASK-3-001: [[../tasks/task-003-sprint-unified-transaction-modal|Modal Unificado de Lançamentos e Limpeza do Header]]

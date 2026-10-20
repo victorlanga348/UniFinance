@@ -17,7 +17,6 @@ import { EducationPage } from '../../pages/EducationPage';
 import { ProfilePage } from '../../pages/ProfilePage';
 import { SettingsPage } from '../../pages/SettingsPage';
 import { AdminDashboard } from '../../pages/AdminDashboard';
-import { Footer } from '../Footer';
 
 export const AppLayout: React.FC = () => {
   const { activePage } = useFinance();
@@ -64,7 +63,6 @@ export const AppLayout: React.FC = () => {
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-7xl mx-auto animate-fade-in">
             {renderActivePage()}
-            <Footer />
           </div>
         </main>
       </div>

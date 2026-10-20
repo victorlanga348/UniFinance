@@ -36,6 +36,7 @@ import {
   Tv, 
   Compass, 
   Receipt, 
+  Target,
   AlertTriangle, 
   Sparkles 
 } from 'lucide-react';
@@ -61,6 +62,7 @@ const categoryIconMap: Record<string, React.ElementType> = {
   Tv,
   Compass,
   Receipt,
+  Target,
   HelpCircle,
   AlertTriangle
 };
@@ -76,6 +78,7 @@ export const Transactions: React.FC = () => {
     categories, 
     budgets,
     currency, 
+    saldoAtual,
     addTransaction, 
     updateTransaction, 
     deleteTransaction,
@@ -117,6 +120,11 @@ export const Transactions: React.FC = () => {
 
   const paymentMethods = ['M-Pesa', 'e-Mola', 'mKesh', 'Dinheiro', 'Transferência Bancária', 'Cartão de Crédito/Débito'];
 
+  const maxAllowedExpense = editingTransaction && editingTransaction.type === 'expense'
+    ? saldoAtual + editingTransaction.amount
+    : saldoAtual;
+  const isExpenseExceeded = txType === 'expense' && txAmount > maxAllowedExpense;
+
   const resetForm = () => {
     setEditingTransaction(null);
     setTxType('expense');
@@ -153,6 +161,15 @@ export const Transactions: React.FC = () => {
     e.preventDefault();
     if (!txDescription || txAmount <= 0 || !txCategoryId) {
       addToast('Por favor preencha todos os campos obrigatórios com valores válidos.', 'warning');
+      return;
+    }
+
+    const maxAllowedExpense = editingTransaction && editingTransaction.type === 'expense'
+      ? saldoAtual + editingTransaction.amount
+      : saldoAtual;
+
+    if (txType === 'expense' && txAmount > maxAllowedExpense) {
+      addToast(`Saldo insuficiente (${maxAllowedExpense.toLocaleString('pt-MZ')} ${currency}) para registar esta despesa.`, 'warning');
       return;
     }
 
@@ -798,19 +815,36 @@ export const Transactions: React.FC = () => {
 
               {/* Amount */}
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Montante ({currency}) *
-                </label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Montante ({currency}) *
+                  </label>
+                  {txType === 'expense' && (
+                    <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                      Livre: {maxAllowedExpense.toLocaleString('pt-MZ')} {currency}
+                    </span>
+                  )}
+                </div>
                 <input
                   type="number"
                   required
                   min="0.01"
                   step="any"
+                  max={txType === 'expense' ? maxAllowedExpense : undefined}
                   value={txAmount || ''}
                   onChange={(e) => setTxAmount(Math.max(0, parseFloat(e.target.value) || 0))}
                   placeholder="Ex: 500"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-mono font-bold tabular-nums"
+                  className={`w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs font-mono font-bold tabular-nums ${
+                    isExpenseExceeded 
+                      ? 'border-rose-500 text-rose-600 dark:text-rose-400' 
+                      : 'border-slate-200 dark:border-slate-800'
+                  }`}
                 />
+                {isExpenseExceeded && (
+                  <span className="text-[9px] text-rose-500 font-semibold mt-1 block">
+                    O montante excede o saldo livre disponível ({maxAllowedExpense.toLocaleString('pt-MZ')} {currency}).
+                  </span>
+                )}
               </div>
 
               {/* Category */}
@@ -889,7 +923,8 @@ export const Transactions: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className={`flex-1 py-2 px-4 text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-md transition-all cursor-pointer ${txType === 'income' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}
+                  disabled={isExpenseExceeded || txAmount <= 0}
+                  className={`flex-1 py-2 px-4 text-white text-xs font-bold uppercase tracking-wider rounded-lg shadow-md transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${txType === 'income' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-rose-500 hover:bg-rose-600'}`}
                 >
                   {editingTransaction ? 'Salvar Alterações' : 'Guardar Lançamento'}
                 </button>

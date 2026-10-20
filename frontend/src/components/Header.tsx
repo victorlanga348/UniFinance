@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Bell, User, Plus, X, LogOut, Check } from 'lucide-react';
+import { Menu, Bell, User, X, LogOut, Check } from 'lucide-react';
 import { useFinance } from '../contexts/FinanceContext';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -83,21 +83,10 @@ export const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) =
           <Menu size={20} />
         </button>
         
-        <div className="hidden sm:block">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">
-            <span>UniFinance</span>
-            <span>/</span>
-            <span className="text-brand-accent">{getPageTitle()}</span>
-          </div>
+        <div>
           <h2 className="text-base font-bold text-slate-800 dark:text-slate-100 font-sans tracking-tight">
             {getPageTitle()}
           </h2>
-        </div>
-        
-        {/* Small header logo for mobile viewport */}
-        <div className="sm:hidden font-serif font-bold text-base text-brand-primary dark:text-white flex items-center gap-1">
-          <span>Uni</span>
-          <span className="text-amber-500">Finance</span>
         </div>
       </div>
 
@@ -114,25 +103,6 @@ export const Header: React.FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen }) =
           </div>
         )}
 
-        {/* Quick Add CTA Dropdown Button - Oculto na página de movimentos onde já existem ações dedicadas */}
-        {user && !['transactions', 'income', 'expenses', 'reports'].includes(activePage) && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActivePage('transactions')}
-              className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
-            >
-              <Plus size={14} strokeWidth={2.5} />
-              <span className="hidden sm:inline">Receita</span>
-            </button>
-            <button
-              onClick={() => setActivePage('transactions')}
-              className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
-            >
-              <Plus size={14} strokeWidth={2.5} />
-              <span className="hidden sm:inline">Despesa</span>
-            </button>
-          </div>
-        )}
 
         {/* PWA Install Button */}
         {user && <PWAInstallButton />}

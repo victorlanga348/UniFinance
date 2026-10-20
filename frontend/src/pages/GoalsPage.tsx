@@ -29,6 +29,7 @@ export const GoalsPage: React.FC = () => {
     deleteGoal, 
     depositToGoal, 
     currency, 
+    saldoAtual,
     addToast 
   } = useFinance();
 
@@ -74,6 +75,11 @@ export const GoalsPage: React.FC = () => {
       return;
     }
 
+    if (!editingGoal && goalCurrent > saldoAtual) {
+      addToast(`O valor inicial não pode ser superior ao saldo disponível (${saldoAtual.toLocaleString('pt-MZ')} ${currency}).`, 'warning');
+      return;
+    }
+
     const payload = {
       name: goalName,
       targetAmount: goalTarget,
@@ -104,6 +110,11 @@ export const GoalsPage: React.FC = () => {
     e.preventDefault();
     if (!depositGoalId || depositAmount <= 0) {
       addToast('Introduza um montante de poupança superior a zero.', 'warning');
+      return;
+    }
+
+    if (depositAmount > saldoAtual) {
+      addToast(`Saldo insuficiente (${saldoAtual.toLocaleString('pt-MZ')} ${currency}) para alocar a esta meta.`, 'warning');
       return;
     }
 
@@ -295,17 +306,32 @@ export const GoalsPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                    Valor Inicial Poupança
-                  </label>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Valor Inicial Poupança
+                    </label>
+                    <span className="text-[9px] text-slate-400 font-mono">
+                      Livre: {saldoAtual.toLocaleString('pt-MZ')} {currency}
+                    </span>
+                  </div>
                   <input
                     type="number"
+                    max={saldoAtual}
                     value={goalCurrent || ''}
                     onChange={(e) => setGoalCurrent(Math.max(0, parseFloat(e.target.value) || 0))}
                     disabled={!!editingGoal}
                     placeholder="Ex: 500"
-                    className="block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-mono font-bold tabular-nums disabled:opacity-50"
+                    className={`block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs font-mono font-bold tabular-nums disabled:opacity-50 ${
+                      !editingGoal && goalCurrent > saldoAtual 
+                        ? 'border-rose-500 text-rose-600 dark:text-rose-400' 
+                        : 'border-slate-200 dark:border-slate-800'
+                    }`}
                   />
+                  {!editingGoal && goalCurrent > saldoAtual && (
+                    <span className="text-[9px] text-rose-500 font-semibold mt-1 block">
+                      Excede o saldo disponível ({saldoAtual.toLocaleString('pt-MZ')} {currency}).
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -331,7 +357,8 @@ export const GoalsPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 px-4 bg-[#0B2545] hover:bg-brand-primary-light text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all"
+                  disabled={!editingGoal && goalCurrent > saldoAtual}
+                  className="flex-1 py-2 px-4 bg-[#0B2545] hover:bg-brand-primary-light text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {editingGoal ? 'Guardar' : 'Criar Meta'}
                 </button>
@@ -364,21 +391,36 @@ export const GoalsPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Valor a Depositar (MZN) *
-                </label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Valor a Depositar ({currency}) *
+                  </label>
+                  <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                    Livre: {saldoAtual.toLocaleString('pt-MZ')} {currency}
+                  </span>
+                </div>
                 <input
                   type="number"
                   required
                   min="1"
+                  max={saldoAtual}
                   value={depositAmount || ''}
                   onChange={(e) => {
                     const val = Math.max(0, parseFloat(e.target.value) || 0);
                     setDepositAmount(val);
                   }}
                   placeholder="Ex: 500"
-                  className="block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-mono font-bold tabular-nums"
+                  className={`block w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-lg text-xs font-mono font-bold tabular-nums ${
+                    depositAmount > saldoAtual 
+                      ? 'border-rose-500 text-rose-600 dark:text-rose-400' 
+                      : 'border-slate-200 dark:border-slate-800'
+                  }`}
                 />
+                {depositAmount > saldoAtual && (
+                  <span className="text-[9px] text-rose-500 font-semibold mt-1 block">
+                    Valor excede o saldo disponível ({saldoAtual.toLocaleString('pt-MZ')} {currency}).
+                  </span>
+                )}
               </div>
 
               <div className="flex gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
@@ -391,7 +433,8 @@ export const GoalsPage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 px-3 bg-[#0B2545] text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-brand-primary-light"
+                  disabled={depositAmount <= 0 || depositAmount > saldoAtual}
+                  className="flex-1 py-2 px-3 bg-[#0B2545] text-white text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-brand-primary-light disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Depositar
                 </button>

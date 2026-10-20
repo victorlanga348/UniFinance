@@ -10,7 +10,7 @@ import { Wallet, CheckCircle, ChevronRight, GraduationCap, Coins, Sparkles, Book
 export const Onboarding: React.FC = () => {
   const { user, completeOnboarding, addToast } = useFinance();
   const [step, setStep] = useState(1);
-  const [saldoInicial, setSaldoInicial] = useState<number>(5000);
+  const [saldoInicial, setSaldoInicial] = useState<number>(0);
   
   // Choose standard starting categories
   const [selectedCategories, setSelectedCategories] = useState<string[]>([
@@ -19,7 +19,7 @@ export const Onboarding: React.FC = () => {
 
   const [hasGoal, setHasGoal] = useState<boolean>(true);
   const [goalName, setGoalName] = useState<string>('Comprar Computador Académico');
-  const [goalTarget, setGoalTarget] = useState<number>(35000);
+  const [goalTarget, setGoalTarget] = useState<number>(0);
 
   const categoriesOptions = [
     { id: 'exp-alimentacao', label: 'Alimentação', icon: '🍲' },
@@ -141,8 +141,9 @@ export const Onboarding: React.FC = () => {
                 <div className="relative w-full max-w-xs">
                   <input
                     type="number"
-                    value={saldoInicial}
+                    value={saldoInicial === 0 ? '' : saldoInicial}
                     onChange={(e) => setSaldoInicial(Math.max(0, parseFloat(e.target.value) || 0))}
+                    placeholder="0"
                     className="w-full text-center text-2xl font-mono font-bold py-2 bg-transparent border-b-2 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-white focus:outline-hidden focus:border-brand-primary dark:focus:border-brand-accent transition-all tabular-nums"
                   />
                   <span className="absolute bottom-2.5 right-2 text-xs text-slate-400 font-bold font-mono">
@@ -238,7 +239,7 @@ export const Onboarding: React.FC = () => {
                       </label>
                       <input
                         type="number"
-                        value={goalTarget}
+                        value={goalTarget === 0 ? '' : goalTarget}
                         onChange={(e) => setGoalTarget(Math.max(0, parseFloat(e.target.value) || 0))}
                         placeholder="Ex: 15000"
                         className="block w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-mono font-semibold tabular-nums"
