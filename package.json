@@ -4,11 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "vite build",
-    "preview": "vite preview",
-    "start": "tsx server.ts",
-    "clean": "rm -rf dist server.js",
+    "dev": "tsx backend/server.ts",
+    "build": "vite build frontend",
+    "preview": "vite preview frontend",
+    "start": "tsx backend/server.ts",
+    "clean": "rm -rf frontend/dist dist server.js",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
